@@ -1,3 +1,5 @@
+@import '../node_modules/@syncfusion/ej2-tailwind3-theme/styles/pivotview/index.css';
+
 :root {
   color: #e0e0e0;
   background-color: #0f0f1e;

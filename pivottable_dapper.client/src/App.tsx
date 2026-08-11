@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DrillThrough, FieldList, Inject, PivotViewComponent } from '@syncfusion/ej2-react-pivotview';
 import { DataManager, UrlAdaptor } from '@syncfusion/ej2-data';
 import './App.css';
@@ -11,10 +11,10 @@ function App() {
     totalQuantity: 0
   });
 
-  let pivotObj: PivotViewComponent;
+  const pivotObj = useRef<PivotViewComponent>(null);
 
   // Initialize DataManager with the Web API endpoint
-  let data: DataManager = new DataManager({
+  const data = new DataManager({
     url: 'https://localhost:7086/api/Sales',                    // Data retrieval endpoint
     insertUrl: 'https://localhost:7086/api/Sales/Insert',       // Called when user adds a new record
     updateUrl: 'https://localhost:7086/api/Sales/Update',       // Called when user edits an existing record
@@ -40,12 +40,12 @@ function App() {
     allowAdding: true,     // Enables the Add button and allows users to create new records
     allowDeleting: true,   // Enables the Delete button and allows users to remove records
     mode: 'Normal'         // Uses Normal mode (popup dialog) for editing; other options: 'Dialog', 'Batch'
-  } as any;
+  };
 
   // Configure beginDrillThrough event to set the primary key for CRUD operations
   function beginDrillThrough(args: any) {
     // Iterate through all columns in the drill-through grid
-    for (var i = 0; i < args.gridObj.columns.length; i++) {
+    for (let i = 0; i < args.gridObj.columns.length; i++) {
       // Check if the current column is the primary key column
       if (args.gridObj.columns[i].field == "orderID") {
         // Mark this column as the primary key
@@ -151,7 +151,7 @@ function App() {
           <div className="pivot-table-wrapper">
             <PivotViewComponent
               id='PivotView' 
-              ref={(scope: any) => { pivotObj = scope; }} 
+              ref={pivotObj}
               height='100%'
               dataSourceSettings={dataSourceSettings} 
               editSettings={editSettings}

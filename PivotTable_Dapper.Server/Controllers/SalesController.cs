@@ -24,10 +24,11 @@ namespace PivotTable_Dapper.Server.Controllers
         /// <returns>Returns the data records along with the total count.</returns>
         [HttpPost]
         [Route("api/[controller]")]
-        public object Post([FromBody] object DataManagerRequest)
+        public async Task<object> Post([FromBody] object DataManagerRequest)
         {
             // Retrieve data from the data source (database).
-            IQueryable<SalesData> DataSource = GetSalesData().AsQueryable();
+            List<SalesData> salesData = await GetSalesData();
+            IQueryable<SalesData> DataSource = salesData.AsQueryable();
             int totalRecordsCount = DataSource.Count();
             // Return data based on the request.
             return new { result = DataSource, count = totalRecordsCount };
@@ -39,15 +40,15 @@ namespace PivotTable_Dapper.Server.Controllers
         /// <returns>Returns a list of SalesData records fetched from the database.</returns>
         [HttpGet]
         [Route("api/[controller]")]
-        public List<SalesData> GetSalesData()
+        public async Task<List<SalesData>> GetSalesData()
         {
             const string Query = @"SELECT * FROM dbo.salesdata ORDER BY orderid;";
 
             using var Connection = new SqlConnection(_connectionString);
-            Connection.Open();
+            await Connection.OpenAsync();
 
             // Dapper's QueryAsync<T> maps query results directly to the SalesData model.
-            var DataSource = Connection.Query<SalesData>(Query).ToList();
+            var DataSource = (await Connection.QueryAsync<SalesData>(Query)).ToList();
             return DataSource;
         }
 
@@ -159,7 +160,7 @@ namespace PivotTable_Dapper.Server.Controllers
         /// <returns>Returns the inserted record with its new OrderID.</returns>
         [HttpPost]
         [Route("api/[controller]/Insert")]
-        public IActionResult Insert([FromBody] CRUDModel<SalesData> model)
+        public async Task<IActionResult> Insert([FromBody] CRUDModel<SalesData> model)
         {
             if (model?.Value == null)
                 return BadRequest("A sales record is required.");
@@ -187,12 +188,12 @@ namespace PivotTable_Dapper.Server.Controllers
         ";
 
                 using var conn = new SqlConnection(_connectionString);
-                conn.Open();
+                await conn.OpenAsync();
 
                 // Dapper's ExecuteScalarAsync<T> returns the first column of the
                 // first row from the executed query, which in this case is the
                 // newly generated identity value.
-                var newId = conn.ExecuteScalar<int>(sql, model.Value);
+                var newId = await conn.ExecuteScalarAsync<int>(sql, model.Value);
 
                 // Update the model with the new ID
                 model.Value.OrderID = newId;
@@ -216,7 +217,7 @@ namespace PivotTable_Dapper.Server.Controllers
         /// <returns>Returns the updated record.</returns>
         [HttpPost]
         [Route("api/[controller]/Update")]
-        public IActionResult Update([FromBody] CRUDModel<SalesData> model)
+        public async Task<IActionResult> Update([FromBody] CRUDModel<SalesData> model)
         {
             if (model?.Value == null)
                 return BadRequest("A sales record is required.");
@@ -254,11 +255,11 @@ namespace PivotTable_Dapper.Server.Controllers
         ";
 
                 using var conn = new SqlConnection(_connectionString);
-                conn.Open();
+                await conn.OpenAsync();
 
                 // Dapper's Execute maps the SalesData properties to the SQL
                 // parameters automatically and returns the number of affected rows.
-                conn.Execute(sql, model.Value);
+                await conn.ExecuteAsync(sql, model.Value);
 
                 // UrlAdaptor expects { key, value, action } on update.
                 return Ok(new { key = model.Value.OrderID, value = model.Value, action = "update" });
@@ -277,7 +278,7 @@ namespace PivotTable_Dapper.Server.Controllers
         /// <returns>Returns the deleted key.</returns>
         [HttpPost]
         [Route("api/[controller]/Remove")]
-        public IActionResult Remove([FromBody] CRUDModel<SalesData> model)
+        public async Task<IActionResult> Remove([FromBody] CRUDModel<SalesData> model)
         {
             if (model?.Key == null)
                 return BadRequest("Missing key.");
@@ -290,11 +291,11 @@ namespace PivotTable_Dapper.Server.Controllers
                 const string sql = @"DELETE FROM dbo.salesdata WHERE orderid = @OrderID;";
 
                 using var conn = new SqlConnection(_connectionString);
-                conn.Open();
+                await conn.OpenAsync();
 
                 // Dapper's Execute runs the parameterized DELETE and returns the
                 // number of rows affected.
-                conn.Execute(sql, new { OrderID = id });
+                await conn.ExecuteAsync(sql, new { OrderID = id });
 
                 // UrlAdaptor expects { key, action } on remove.
                 return Ok(new { key = id, action = "remove" });
